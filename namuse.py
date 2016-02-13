@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 #
 # namuse.py - Renames music files in mp3 and flac format.
 # Copyright (C) 2010 Mansour Behabadi <mansour@oxplot.com>
