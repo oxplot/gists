@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 # sanah - Strictly Non-Human random password generator
 #
 # Copyright (C) 2011 by Mansour Behabadi <mansour@oxplot.com>

@@ -158,7 +158,7 @@ last_obj = tuple(map(int, last_obj.groups()))
 
 if len(svg_rects) != len(pdf_rects):
   print('''
-error: found diff # of rects in svg & ps
+error: found diff # of rects in svg (%d) & ps (%d)
 This can be due to number of reasons:
  - you've moved the box after creating a link for it - bad move!
    fix: delete it and draw a new box and DON'T MOVE it this time
@@ -167,7 +167,7 @@ This can be due to number of reasons:
  - you forgot to remove the strokes from the boxes
  - you have removed a box but Inkscape is still keeping it in the file
    fix: do a document cleanup or close/re-open your file
-'''.strip(), file=sys.stderr)
+'''.strip() % (len(svg_rects), len(pdf_rects)), file=sys.stderr)
   exit(1)
 
 # Match up the rects based on their relative X,Y position
