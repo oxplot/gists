@@ -1,66 +1,48 @@
 #!/usr/bin/env python
-# vim: ts=2:sw=2:tw=72:expandtab:sts=2
 #
 # pfs.py - Pretty Fucking Simple static blog generator
-# Copyright (C) 2013 Mansour Behabadi <mansour@oxplot.com>
+# Copyright (C) 2016 Mansour Behabadi <mansour@oxplot.com>
 #
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are
+# met:
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+# 1. Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in the
+#    documentation and/or other materials provided with the
+#    distribution.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+# OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""Pretty Fucking Simple static blog generator."""
-
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
-__author__ = 'Mansour Behabadi'
-__copyright__ = 'Copyright (C) 2013 Mansour Behabadi'
-__credits__ = ['Mansour Behabadi']
-__email__ = 'mansour@oxplot.com'
-__license__ = 'GPLv3'
-__maintainer__ = 'Mansour Behabadi'
-__version__ = '1.0'
-__progname__ = 'pfs'
-
-_WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul',
-          'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-
-from subprocess import Popen, PIPE
 import argparse
 import calendar
 import functools
-import markdown
+import io
+import json
 import os
 import re
 import shutil
 import sys
 import time
 
-try:
-  unicode = unicode
-except NameError:
-  unicode = str
+_WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug',
+  'Sep', 'Oct', 'Nov', 'Dec']
 
-try:
-  xrange = xrange
-except NameError:
-  xrange = range
-
-try:
-  from StringIO import StringIO
-except ImportError:
-  from io import StringIO
+__open = open
+open = lambda *ar, **kwar: __open(*ar, **{'encoding': 'utf8', **kwar})
 
 def _date_to_utcts(ts):
   return calendar.timegm(time.strptime(ts, '%Y-%m-%d %H:%M:%S'))
@@ -108,28 +90,13 @@ class PFS(object):
       destdir = self._outd(str(pagenum))
       os.makedirs(destdir)
     path = os.path.join(destdir, 'index.html')
-    open(path, 'wb').write(content.encode('utf8'))
+    open(path, 'w').write(content)
 
   def _rssroll_outter(self, pagenum, content):
     if pagenum > 1:
       return
     open(self._outd(self.cfg.get('rss_file', 'rss.xml')),
-      'wb').write(content.encode('utf8'))
-
-  def _load_bunprocs(self, loc):
-    procs = []
-    rt = self._ind(loc)
-    if os.path.exists(rt):
-      for f in sorted(os.listdir(rt)):
-        if self._ignorepat and self._ignorepat.search(f):
-          continue
-        raw = open(os.path.join(rt, f), 'rb').read().decode('utf8')
-        lines = re.sub(r'\r\|\r|\n', '\n', raw.strip()).split('\n')
-        code = 'from __future__ import unicode_literals\n'
-        code += 'def process(text):\n'
-        code += '\n'.join(map(lambda x: ' ' + x, lines))
-        procs.append(compile(code, '<string>', 'exec'))
-    return procs
+      'w').write(content)
 
   def build(self):
     if not os.path.exists(self._outdir):
@@ -137,8 +104,6 @@ class PFS(object):
     if os.listdir(self._outdir):
       raise PFSError('destination directory is not empty')
     self._ignorepat = re.compile(self.cfg.get('ignore', r'[\x00]\A'))
-    self._pre_procs = self._load_bunprocs('preprocs')
-    self._post_procs = self._load_bunprocs('postprocs')
     self._pages_list = self._build_pages('pages', 'page.html')
     self._posts_list = self._build_pages('posts', 'post.html')
     self._build_rolls(
@@ -158,20 +123,18 @@ class PFS(object):
     self._build_misc()
 
   def _build_misc(self):
-    for misc_tpl in self.cfg.get('misc', []):
-      src, dst = map(lambda x: x.replace('/', os.path.sep).strip(),
-                     misc_tpl.split('->'))
+    for misc_s, misc_d in self.cfg.get('misc', {}).items():
+      src, dst = map(lambda x: x.replace('/', os.path.sep), (misc_s, misc_d))
       dst_dir, dst_file = os.path.split(dst)
       tpl = CSTE(self._tplldr, src)
       var = self._populate_var(depth=dst.count('/'))
       if dst_dir and not os.path.exists(self._outd(dst_dir)):
         os.makedirs(self._outd(dst_dir))
-      open(self._outd(dst), 'wb').write(tpl.gen(**var).encode('utf8'))
+      open(self._outd(dst), 'w').write(tpl.gen(**var))
 
   def _build_redirects(self):
     redirtpl = CSTE(self._tplldr, 'redirect.html')
-    for redir in self.cfg.get('redirects', []):
-      frm, to = map(unicode.strip, redir.split('->'))
+    for frm, to in self.cfg.get('redirects', {}).items():
       frm_dir, frm_file = os.path.split(frm.replace('/', os.path.sep))
       depth = frm.count('/')
       hdr = self._load_page(
@@ -182,7 +145,7 @@ class PFS(object):
       output = redirtpl.gen(**var)
       if frm_dir and not os.path.exists(self._outd(frm_dir)):
         os.makedirs(self._outd(frm_dir))
-      open(self._outd(frm), 'wb').write(output.encode('utf8'))
+      open(self._outd(frm), 'w').write(output)
 
   def _build_media(self):
     shutil.copytree(self._ind('media'), self._outd('media'))
@@ -196,7 +159,7 @@ class PFS(object):
       reverse=True
     )
     pnum = 1
-    for start in xrange(0, len(plist), ppp):
+    for start in range(0, len(plist), ppp):
       if depth_override is None:
         depth = 0 if start == 0 else 1
       else:
@@ -221,7 +184,7 @@ class PFS(object):
     var.update(hdr)
     var['CFG'] = dict(self.cfg)
     def doproc(text):
-      return self._process(text)
+      return text
     def abs_link(path):
       return var['blog_url'].rstrip('/') + '/' + path
     def root_link(path):
@@ -240,10 +203,6 @@ class PFS(object):
     var['abs_link'] = abs_link
     var['utc_stamp'] = _date_to_utcts
     var['fmt_stamp'] = _fmt_ts
-    var['generator'] = {
-      'name': __progname__,
-      'ver': __version__
-    }
     return var
 
   def _build_pages(self, inpdir, tpl):
@@ -262,8 +221,7 @@ class PFS(object):
         var = self._populate_var(hdr=hdr)
         var['body_content'] = body
         output = genedtpl.gen(**var)
-        open(os.path.join(destdir, 'index.html'),
-             'wb').write(output.encode('utf8'))
+        open(os.path.join(destdir, 'index.html'), 'w').write(output)
         pagelist.append(hdr['slug'])
     return pagelist
 
@@ -274,43 +232,22 @@ class PFS(object):
       path = self._ind(name.lstrip(os.path.sep))
     else:
       path = os.path.join(self._ind('templates'), name)
-    return open(path, 'rb').read().decode('utf8')
+    return open(path, 'r').read()
 
   def _load_page(self, path, depth = None, force_abs = False):
-    data = open(path, 'rb').read().decode('utf8')
+    data = open(path, 'r').read()
     data = re.sub(r'\r\n|[\r\n]', '\n', data)
     secs = data.split('\n\n', 1)
     if len(secs) < 2:
       raise PFSError("'%s' is missing header" % path)
-    header, body = sssd_load(secs[0]), secs[1]
+    header, body = json.loads(secs[0]), secs[1]
     var = self._populate_var(
       hdr=header, depth=depth, force_abs=force_abs)
     body = CSTE(self._tplldr, '!@#' + body).gen(**var)
-    body = self._process(body)
     bodysecs = body.split('<!--BREAK-->')
     header['_filepath'] = path
     self._page_meta[header['slug']] = header
     return (header, bodysecs)
-
-  def _post_process(self, text):
-    return self._bun_process(self._post_procs, text)
-
-  def _pre_process(self, text):
-    return self._bun_process(self._pre_procs, text)
-
-  def _bun_process(self, procs, text):
-    for compiled in procs:
-      localvars = {}
-      exec(compiled, {}, localvars)
-      text = localvars['process'](text)
-    return text
-
-  def _process(self, text):
-    return self._post_process(markdown.markdown(
-      self._pre_process(text),
-      output_format='html5',
-      extensions=['abbr', 'footnotes']
-    ))
 
 class CSTE(object):
   """Considerably Simple Template Engine."""
@@ -339,7 +276,7 @@ class CSTE(object):
       lambda x: '' if x is None else x.strip(), match.groups())
 
     if var:
-      self._write('_writer.write(_escape(unicode(%s)))' % var)
+      self._write('_writer.write(_escape(str(%s)))' % var)
 
     elif stmt == 'extends':
       self._extends = CSTE(self.loader, stmtdet)
@@ -421,7 +358,6 @@ class CSTE(object):
   def _build(self):
     """Compile the template into python code object."""
 
-    self._write('from __future__ import unicode_literals')
     self._write('def _gen(_blocks={}):')
     self._indent += 1
     self._write('_escape = xml_escape')
@@ -458,8 +394,8 @@ class CSTE(object):
     """
 
     globalvars = {
-      'StringIO': StringIO,
-      'unicode': unicode,
+      'StringIO': io.StringIO,
+      'str': str,
       '_include': functools.partial(self._include, _blocks, var),
       'xml_escape': _xml_escape,
       '_no_escape': lambda x: x,
@@ -473,64 +409,6 @@ class CSTE(object):
       return self._extends.gen(_blocks=_gen(_blocks=_blocks), **var)
     else:
       return _gen(_blocks=_blocks)
-
-def sssd_load(data):
-  """Load a Stupidly Simple Structured Data."""
-  lines = list(map(unicode.rstrip,
-    re.sub(r'(\r\n|[\r\n])', '\n', data).strip().split('\n')))
-  root = ({}, [])
-  stack = [root]
-  while lines:
-    m = re.search(
-      r'^((?:  )*)([a-zA-Z_][a-zA-Z_0-9]*:|-) *(\'.*\'|.*)$',
-      lines.pop(0)
-    )
-    if not m:
-      continue
-    lev, key, val = len(m.group(1)) // 2, m.group(2), m.group(3)
-    stack = stack[:lev + 1]
-    if val:
-      val = val[1:-1] if val.startswith("'") else val
-      if key == '-': stack[-1][1].append(val)
-      else: stack[-1][0][key[:-1]] = val
-    else:
-      newbranch = ({}, [])
-      if key == '-': stack[-1][1].append(newbranch)
-      else: stack[-1][0][key[:-1]] = newbranch
-      stack.append(newbranch)
-  def _get_pop(node):
-    if type(node) == tuple:
-      if node[0]:
-        return dict((k, _get_pop(node[0][k])) for k in node[0])
-      else:
-        return list(map(_get_pop, node[1]))
-    else:
-      return node
-  return _get_pop(root)
-
-def sssd_dump(data, lev = 0):
-  """Dump a Stupidly Simple Structured Data."""
-  lines = []
-  if type(data) == dict:
-    for k in data:
-      if type(data[k]) in (dict, list):
-        lines.append(' ' * (lev * 2) + k + ':')
-        lines.extend(sssd_dump(data[k], lev + 1))
-      else:
-        lines.append(' ' * (lev * 2) + k + ': '
-                     + sssd_dump(data[k], lev))
-  elif type(data) == list:
-    for i in data:
-      if type(i) in (dict, list):
-        lines.append(' ' * (lev * 2) + '-')
-        lines.extend(sssd_dump(i, lev + 1))
-      else:
-        lines.append(' ' * (lev * 2) + '- ' + sssd_dump(i, lev))
-  else:
-    val = "'%s'" % data if not data or data.strip() != data else data
-    return val
-
-  return lines if lev > 0 else '\n'.join(lines)
 
 def main():
   """Parse command line arguments."""
@@ -572,14 +450,14 @@ def main():
   # Load the config
 
   cfgpath = opts.config or os.path.join(opts.root, 'config')
-  cfg = sssd_load(open(cfgpath, 'rb').read().decode('utf8'))
+  cfg = json.load(open(cfgpath, 'r'))
 
   try:
     pfsinst = PFS(cfg, opts)
     if opts.cmd == 'build':
       pfsinst.build()
   except PFSError as e:
-    print('%s: error: %s' % (__progname__, e.args[0]), file=sys.stderr)
+    print('pfs: error: %s' % e.args[0], file=sys.stderr)
     exit(1)
 
 if __name__ == '__main__':
