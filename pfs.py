@@ -108,12 +108,12 @@ class PFS(object):
     self._posts_list = self._build_pages('posts', 'post.html')
     self._build_rolls(
       tpl='roll.html',
-      ppp=int(self.cfg['posts_per_page']),
+      ppp=self.cfg['posts_per_page'],
       outter=self._mainroll_outter
     )
     self._build_rolls(
       tpl='rss.xml',
-      ppp=int(self.cfg.get('rss_count', self.cfg['posts_per_page'])),
+      ppp=self.cfg.get('rss_count', self.cfg['posts_per_page']),
       outter=self._rssroll_outter,
       depth_override=0,
       force_abs=True
