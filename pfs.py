@@ -115,8 +115,7 @@ class PFS(object):
       tpl='rss.xml',
       ppp=self.cfg.get('rss_count', self.cfg['posts_per_page']),
       outter=self._rssroll_outter,
-      depth_override=0,
-      force_abs=True
+      depth_override=0
     )
     self._build_media()
     self._build_redirects()
@@ -150,8 +149,7 @@ class PFS(object):
   def _build_media(self):
     shutil.copytree(self._ind('media'), self._outd('media'))
 
-  def _build_rolls(self, tpl, ppp, outter, depth_override = None,
-                   force_abs = False):
+  def _build_rolls(self, tpl, ppp, outter, depth_override = None):
     genedtpl = CSTE(self._tplldr, tpl)
     plist = list(self._posts_list)
     plist.sort(
@@ -164,10 +162,9 @@ class PFS(object):
         depth = 0 if start == 0 else 1
       else:
         depth = depth_override
-      var = self._populate_var(depth=depth, force_abs=force_abs)
+      var = self._populate_var(depth=depth)
       var['posts'] = [
-        self._load_page(self._page_meta[x]['_filepath'],
-                        depth=depth, force_abs=force_abs)
+        self._load_page(self._page_meta[x]['_filepath'], depth=depth)
         for x in plist[start:start + ppp]
       ]
       var['cur_page_num'] = (start // ppp) + 1
@@ -177,7 +174,7 @@ class PFS(object):
       output = genedtpl.gen(**var)
       outter(var['cur_page_num'], output)
 
-  def _populate_var(self, hdr = {}, depth = None, force_abs = False):
+  def _populate_var(self, hdr = {}, depth = None):
     depth = hdr['slug'].count('/') + 1 if depth is None else depth
     var = {}
     var.update(self.cfg)
@@ -187,14 +184,14 @@ class PFS(object):
       return text
     def abs_link(path):
       return var['blog_url'].rstrip('/') + '/' + path
-    def root_link(path):
-      return abs_link(path) if force_abs else '../' * depth + path
-    def media_link(path):
-      return root_link('media/' + path)
-    def page_link(slug):
-      return root_link(slug + '/')
-    def roll_link(pagenum):
-      return root_link('' if pagenum == 1 else str(pagenum) + '/')
+    def root_link(path, abs=False):
+      return abs_link(path) if abs else '../' * depth + path
+    def media_link(path, abs=False):
+      return root_link('media/' + path, abs)
+    def page_link(slug, abs=False):
+      return root_link(slug + '/', abs)
+    def roll_link(pagenum, abs=False):
+      return root_link('' if pagenum == 1 else str(pagenum) + '/', abs)
     var['doproc'] = doproc
     var['root_link'] = root_link
     var['media_link'] = media_link
@@ -234,15 +231,14 @@ class PFS(object):
       path = os.path.join(self._ind('templates'), name)
     return open(path, 'r').read()
 
-  def _load_page(self, path, depth = None, force_abs = False):
+  def _load_page(self, path, depth = None):
     data = open(path, 'r').read()
     data = re.sub(r'\r\n|[\r\n]', '\n', data)
     secs = data.split('\n\n', 1)
     if len(secs) < 2:
       raise PFSError("'%s' is missing header" % path)
     header, body = json.loads(secs[0]), secs[1]
-    var = self._populate_var(
-      hdr=header, depth=depth, force_abs=force_abs)
+    var = self._populate_var(hdr=header, depth=depth)
     body = CSTE(self._tplldr, '!@#' + body).gen(**var)
     bodysecs = body.split('<!--BREAK-->')
     header['_filepath'] = path
@@ -272,8 +268,11 @@ class CSTE(object):
                   % self.tpl[self._lastpos:match.start()])
     self._lastpos = match.end()
 
-    stmt, stmtdet, var = map(
-      lambda x: '' if x is None else x.strip(), match.groups())
+    mgs = list(map(
+      lambda x: '' if x is None else x.strip(), match.groups()))
+    stmt = mgs[0] or mgs[2]
+    stmtdet = mgs[1] or mgs[3]
+    var = mgs[4] or mgs[5]
 
     if var:
       self._write('_writer.write(_escape(str(%s)))' % var)
@@ -365,8 +364,11 @@ class CSTE(object):
     self._write('_writers = []')
     self._write('_writer = StringIO()')
 
-    re.sub(r'[{]%\s*([a-z]+)\s+(.*?)\s*%[}]|[{][{]\s*(.*?)\s*[}][}]',
-           self._expr, self.tpl)
+    re.sub(r'''
+      [{]%\s*([a-z]+)\s+(.*?)\s*%[}] | [<]%\s*([a-z]+)\s+(.*?)\s*%[>]
+      |
+      [{][{]\s*(.*?)\s*[}][}] | [<][%]=\s*(.*?)\s*[%][>]
+    ''', self._expr, self.tpl, 0, re.X)
 
     if self._extends:
       self._write('_myblocks.update(_blocks)')
