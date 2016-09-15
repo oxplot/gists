@@ -142,8 +142,9 @@ PDF_RECT_PAT = re.compile(br'''
   \b1\s+0\s+1\s+rg(?:\s+/a0\s+gs)?
   ((?:\s+[\d.-]+\s+[\d.-]+\s+[\d.-]+\s+[\d.-]+\s+re\s+f.?)+)\b
 ''', re.X)
-m = PDF_RECT_PAT.search(pdf_data)
-pdf_rects = re.split(br'\s+', m.group(1).strip()) if m else []
+pdf_rects = []
+for m in PDF_RECT_PAT.finditer(pdf_data):
+    pdf_rects.extend(re.split(br'\s+', m.group(1).strip()))
 pdf_rects = [
   list(map(float, pdf_rects[i:i + 4]))
   for i in range(0, len(pdf_rects), 6)
