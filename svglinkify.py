@@ -140,7 +140,7 @@ finally:
 
 PDF_RECT_PAT = re.compile(br'''
   \b1\s+0\s+1\s+rg(?:\s+/a0\s+gs)?
-  ((?:\s+[\d.-]+\s+[\d.-]+\s+[\d.-]+\s+[\d.-]+\s+re\s+f)+)\b
+  ((?:\s+[\d.-]+\s+[\d.-]+\s+[\d.-]+\s+[\d.-]+\s+re\s+f.?)+)\b
 ''', re.X)
 m = PDF_RECT_PAT.search(pdf_data)
 pdf_rects = re.split(br'\s+', m.group(1).strip()) if m else []
