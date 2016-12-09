@@ -42,6 +42,31 @@
 #    also notice that the magenta box is gone. That's it. Now read the
 #    sections below if you hate being frustrated when things break.
 #
+# 7. If links don't match the expected rectangles, you can manually force
+#    order using the last argument that is a (coma separeted) list of indexes.
+#    First run svglinkify.py to get the list of indexes and links:
+#
+#    $ svglinkify.py my_doc.svg my_doc.pdf my_doc_with_links.pdf
+#    Detected links:
+#    [0]: https://www.google.fr
+#    [1]: https://fr.yahoo.com/
+#    [2]: https://duckduckgo.com/
+#    PDF including hyperlinks has been successfully created.
+#
+#    Here we have 3 links, indexed 0, 1 and 2
+#    For example you can manually invert the 2 last ones:
+#
+#    $ svglinkify.py my_doc.svg my_doc.pdf my_doc_with_links.pdf 0,2,1
+#    Detected links:
+#    [0]: https://www.google.fr
+#    [1]: https://fr.yahoo.com/
+#    [2]: https://duckduckgo.com/
+#    Manually re-ordered links:
+#    [0]: https://www.google.fr
+#    [1]: https://duckduckgo.com/
+#    [2]: https://fr.yahoo.com/
+#    PDF including hyperlinks has been successfully created.
+#
 # HOW IT WORKS
 #
 # The script looks for magenta boxes (surprise!) that have a link. It
@@ -97,13 +122,14 @@ except:
 # Command line parsing
 
 if len(sys.argv) < 4:
-  print('Usage: %s <svg-file> <inkscape-gen-pdf> <linkified-pdf>'
-    % sys.argv[0], file=sys.stderr)
+  print('Usage: %s <svg-file> <inkscape-gen-pdf> <linkified-pdf> ' \
+    '[manual_order_indexes]' % sys.argv[0], file=sys.stderr)
   exit(1)
 
 svg_path = sys.argv[1]
 pdf_in_path = sys.argv[2]
 pdf_out_path = sys.argv[3]
+manual_order = sys.argv[4] if (len(sys.argv) >= 5) else None
 
 # Load the link rects from SVG file
 
@@ -137,6 +163,7 @@ finally:
     pass
 
 # Load the rects and last object ID from PDF file
+# http://benno.id.au/refs/PDFReference15_v5.pdf  page 219
 
 PDF_RECT_PAT = re.compile(br'''
   \b1\s+0\s+1\s+rg(?:\s+/a0\s+gs)?
@@ -175,9 +202,41 @@ This can be due to number of reasons:
 # FIXME there is a possibility that due to rounding errors, links get
 # matched up incorrectly. Always check the final PDF before sharing.
 
+_DEBUG = False
+if _DEBUG:
+    import pprint
+    pp = pprint.PrettyPrinter(indent=2)
+    print('1: svg_rects', end=""); pp.pprint(svg_rects)
+    print('1: pdf_rects', end=""); pp.pprint(pdf_rects)
+
 svg_rects.sort(key=(lambda x: int(x[2] * 100)), reverse=True)
 svg_rects.sort(key=lambda x: int(x[1] * 100))
-pdf_rects.sort(key=lambda x: (int(x[0] * 100), int(x[1] * 100)))
+#pdf_rects.sort(key=lambda x: (int(x[0] * 100), int(x[1] * 100)))
+
+if _DEBUG:
+    print('2: svg_rects', end=""); pp.pprint(svg_rects)
+    print('2: pdf_rects', end=""); pp.pprint(pdf_rects)
+
+idx=0
+print('Detected links:')
+for rects in reversed(svg_rects):
+    print(' [%d]: %s' % (idx, rects[0]))
+    idx+=1
+
+if (manual_order):
+    new_svg_rects = []
+    idx -= 1
+    for newIdx in reversed(manual_order.split(',')):
+        if (int(newIdx) <= len(svg_rects)):
+          new_svg_rects.append(svg_rects[idx - int(newIdx)])
+
+    svg_rects = new_svg_rects
+    idx=0
+    print('Manually re-ordered links:')
+    for rects in reversed(new_svg_rects):
+        print(' [%d]: %s' % (idx, rects[0]))
+        idx+=1
+
 
 # Generate the PDF hyperlink objects
 
@@ -232,6 +291,7 @@ try:
   ]) != 0:
     print('error: failed writing the mod pdf', file=sys.stderr)
     exit(1)
+  print('PDF including hyperlinks has been successfully created.')
 finally:
   try:
     os.unlink(out_tmppath)
