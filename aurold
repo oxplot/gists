@@ -1,0 +1,31 @@
+#!/usr/bin/env python
+# List all outdated AUR packages
+# Copyright (C) 2016 Mansour Behabadi <mansour@oxplot.com>
+
+import json
+import re
+import subprocess
+import urllib.parse
+import urllib.request
+
+local_pkgs = subprocess.check_output(['pacman', '-Qm']).decode('utf8')
+local_pkgs = {
+  p[0]: p[1]
+  for p in re.findall(r'^(\S+)\s+(.+)$', local_pkgs, flags=re.M)
+}
+
+remote_pkgs = {r['Name']: r for r in json.loads(urllib.request.urlopen(
+  'https://aur.archlinux.org/rpc.php?' + urllib.parse.urlencode(
+    [('type', 'multiinfo')] + [('arg[]', p) for p in local_pkgs]
+  ),
+).read().decode('utf8'))['results']}
+  
+for p in local_pkgs:
+  if p not in remote_pkgs:
+    continue
+  local_ver = local_pkgs[p]
+  remote_ver = remote_pkgs[p]['Version']
+  vercmp = int(subprocess.check_output(
+    ['vercmp', local_ver, remote_ver]).decode('utf8').strip())
+  if vercmp < 0:
+    print(p)
