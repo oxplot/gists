@@ -1,0 +1,16 @@
+#!/bin/sh
+# Simple shell based template processor
+# Usage examples:
+#
+# $ echo 'logfile=$HOME/.logs' | sub
+# logfile=/home/mike/.logs
+#
+# $ echo 'background: url("$(pwd)/pic.png")' | sub
+# background: url("/opt/a/pic.png")
+
+[ "$1" != '' ] && exec < "$1"
+
+eval "$(
+  sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' \
+      -e 's/^/printf '"'"'%s\\n'"'"' "/' -e 's/$/"/'
+)"
