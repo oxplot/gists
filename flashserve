@@ -1,0 +1,35 @@
+#!/bin/sh
+set -e
+
+export FILE_PATH="$1"
+if [ "$FILE_PATH" = "" ]; then
+  echo 'Usage: flashserve <file>'
+  exit 1
+fi
+
+export FILE_NAME="$(basename "$FILE_PATH")"
+export FILE_SIZE="$(stat --printf="%s" "$FILE_PATH")"
+
+MY_IP="$(ip route get 1.1.1.1 | grep -oP 'src \K\S+')"
+MY_PORT="$(shuf -i10000-50000 -n1)"
+MY_ADDR="http://$MY_IP:$MY_PORT/"
+
+echo "
+Download '$FILE_NAME' from $MY_ADDR
+
+or scan the following with your phone:
+"
+echo -n "http://$MY_IP:$MY_PORT/" | qrencode -o - -tutf8
+echo 'Ctrl+C to exit'
+
+function servefile {
+  echo HTTP/1.0 200
+  echo Content-Type: application/octet-stream
+  echo "Content-Disposition: attachment; filename=\"$FILE_NAME\""
+  echo Content-Length: $FILE_SIZE
+  echo
+  cat "$FILE_PATH"
+}
+export -f servefile
+
+socat TCP-LISTEN:"$MY_PORT",fork,reuseaddr SYSTEM:servefile
