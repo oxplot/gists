@@ -101,8 +101,6 @@ class PFS(object):
   def build(self):
     if not os.path.exists(self._outdir):
       raise PFSError('destination directory does not exist')
-    if os.listdir(self._outdir):
-      raise PFSError('destination directory is not empty')
     self._ignorepat = re.compile(self.cfg.get('ignore', r'[\x00]\A'))
     self._pages_list = self._build_pages('pages', 'page.html')
     self._posts_list = self._build_pages('posts', 'post.html')
