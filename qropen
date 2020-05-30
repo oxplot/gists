@@ -1,0 +1,8 @@
+#!/bin/bash
+xdg-open "$(
+  head -1 < <(
+    trap 'kill -9 0' EXIT
+    zbarcam --quiet --nodisplay -Stest-inverted |
+    grep -Po --line-buffered '^QR-Code:\Khttps?://.*'
+  )
+)" >/dev/null 2>/dev/null
