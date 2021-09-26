@@ -4,7 +4,7 @@ trap 'kill 0' EXIT
 eval "nmcli d wifi connect $(
   head -1 < <(
     zbarcam --quiet --nodisplay -Stest-inverted |
-    grep --line-buffered '^QR-Code:WIFI:S:'
+    grep --line-buffered '^QR-Code:WIFI:[ST]:'
   ) | sed 's/^.*S:\([^;]*\).*P:\([^;]*\).*$/"\1" password "\2"/' &&
   echo connecting ... >&2
 )"
