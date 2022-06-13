@@ -2,7 +2,7 @@
 #
 # cloop-decompress.py - Extract/Decompress cloop image to a raw image
 #
-# Copyright (C) 2012 Mansour Behabadi <mansour@oxplot.com>
+# Copyright (C) 2022 Mansour Behabadi <mansour@oxplot.com>
 # All rights reserved.
 # 
 # Redistribution and use in source and binary forms, with or without

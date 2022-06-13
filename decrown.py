@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (C) 2016 Mansour Behabadi <mansour@oxplot.com>
+# Copyright (C) 2022 Mansour Behabadi <mansour@oxplot.com>
 
 import re
 import subprocess

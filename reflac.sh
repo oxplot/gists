@@ -1,7 +1,7 @@
 #!/bin/sh
 # reflac.sh - Re-encode FLAC file, strip ID3 tags while preserving
 #             timestamp.
-# Copyright (C) 2010 Mansour Behabadi <mansour@oxplot.com>
+# Copyright (C) 2022 Mansour Behabadi <mansour@oxplot.com>
 
 OLDDATE=`stat -c %y "$1"`
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #
 # pfs.py - Pretty Fucking Simple static blog generator
-# Copyright (C) 2016 Mansour Behabadi <mansour@oxplot.com>
+# Copyright (C) 2022 Mansour Behabadi <mansour@oxplot.com>
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
