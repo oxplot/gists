@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 # sanah - Strictly Non-Human random password generator
 #
 # Copyright (C) 2022 by Mansour Behabadi <mansour@oxplot.com>
@@ -27,7 +27,7 @@ import sys
 import struct
  
 if len(sys.argv) < 3:
-  print "Usage: sanah <[@][0][a][A]> <length>"
+  print("Usage: sanah <[@][0][a][A]> <length>")
   exit(0)
 spec, length = sys.argv[1:3]
 length = int(length)
@@ -42,11 +42,11 @@ if 'a' in spec:
 if 'A' in spec:
   chars += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 if not chars:
-  print "You must pick at least one type of chars"
+  print("You must pick at least one type of chars")
   exit(1)
  
 gen = Crypto.Random.new()
 rnd = gen.read(length * 2)
-print ''.join(map(lambda a: chars[a % len(chars)],
-                  struct.unpack('%dH' % length, rnd)))
+print(''.join(map(lambda a: chars[a % len(chars)],
+                  struct.unpack('%dH' % length, rnd))))
 gen.close()
