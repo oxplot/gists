@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # sanah - Strictly Non-Human random password generator
 #
-# Copyright (C) 2022 by Mansour Behabadi <mansour@oxplot.com>
+# Copyright (C) 2022 Mansour Behabadi <mansour@oxplot.com>
 # 
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
