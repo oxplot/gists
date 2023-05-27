@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -euo pipefail
+ffmpeg -i "${1?first arg must be input file name}" \
+  -c copy -map 0 -c:s mov_text "${2?second arg must be output file name}"
