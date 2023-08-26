@@ -1,0 +1,12 @@
+#!/bin/bash
+set -euo pipefail
+
+region="$(aws ec2 describe-availability-zones --output text --query 'AvailabilityZones[0].[RegionName]')"
+account_id="$(aws --output text --query Account sts get-caller-identity)"
+
+repo_url="${account_id}.dkr.ecr.${region}.amazonaws.com"
+
+aws ecr get-login-password --region "$region" |
+  docker login --username AWS --password-stdin "$repo_url"
+
+echo "$repo_url"

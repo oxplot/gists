@@ -1,0 +1,4 @@
+#!/bin/sh
+echo Serving files in current director at localhost:8080
+sleep 2
+docker run -it --rm -v $(pwd):/usr/share/nginx/html:ro -p 8080:80 nginx
